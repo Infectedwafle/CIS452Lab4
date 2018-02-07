@@ -9,24 +9,27 @@
 #define MAXLINE 255
 
 void *find_file1(void *arg);
-void print_stats(int);
+void stop_server(int);
 
 // global (shared and specific) data
 int requestsRecieved = 0;
 int requestsServiced = 0;
+int threadCount = 0;
 
 int quit = 0;
 int main()
 {
-    signal(SIGINT, print_stats);
+    signal(SIGINT, stop_server);
     pthread_t thread1;
     int status;
-    
+ 
     while(!quit) {
-	fflush(stdout);
 	char fileName[MAXLINE];
+	fflush(stdout);
 	printf("Enter a File Name: ");
-	fgets(fileName, MAXLINE, stdin);
+	fflush(stdout);
+	fflush(stdin);
+	if (0 < read(fileno(stdin), &fileName, MAXLINE))
 	
 	fileName[strcspn(fileName, "\n")] = 0;
     
@@ -36,21 +39,27 @@ int main()
 	}
     }
     
-    if ((status = pthread_join(thread1, NULL)) != 0) {
-	    fprintf(stderr, "join error %d:%s\n", status, strerror(status));
-	    exit(1);
+    printf("Waiting for Requests to finish");	
+    while(threadCount > 0) {
+	
     }
+    	// wait for threads to finish if any
+   
+    printf("\nFile Requests Recieved: %d\n", requestsRecieved);
+    printf("File Requests Serviced: %d\n", requestsServiced);
     
+    printf("Shutting Down Server\n");    
+    fflush(stdout); 
     return 0;
 }
 
 void *find_file1(void *arg)
 {	
-    printf("%p\n", arg);
+    threadCount++;
     requestsRecieved++;
     //note the cast of the void pointer to the desired data type
-    char *fileName = (char *)arg;
-    
+    char fileName[strlen(arg)];
+    memcpy(fileName, arg, strlen(arg));
     int rand1 = rand() % 10 + 1;
     
     if(rand1 < 9) {
@@ -62,11 +71,11 @@ void *find_file1(void *arg)
       sleep(rand2);
       printf("%s Not Found\n", fileName);
     }
+
+    threadCount--;
     return NULL;
 }
 
-void print_stats(int sigNum) {
-    printf("\nFile Requests Recieved: %d\n", requestsRecieved);
-    printf("File Requests Serviced: %d\n", requestsServiced);
+void stop_server(int sigNum) {
     quit = 1;
 }
